@@ -18,11 +18,14 @@ namespace LightApp
         private ImageView lightSwitch;
         private TextView nameTV;
         private TextView textView2;
+        private Toolbar toolbar;
+        private ImageView reloadBtn;
         private BluetoothDevice bleDevice;
         private BluetoothGatt bleGatt;
         private GattClientObserver observer;
         private BluetoothAdapter adapter;
-        private BluetoothManager manager;
+        private BluetoothGattService lightService = null;
+        private BluetoothGattCharacteristic lightCharacteristic = null;
         private readonly byte[] ARDUINO_MAC_ADDRESS = { 0x50, 0xF1, 0x4A, 0x50, 0x9A, 0x7E };
         //private readonly byte[] ARDUINO_MAC_ADDRESS = { 0xC8, 0x0F, 0x10, 0x69, 0xD5, 0xB6 }; // actually of Mi Band 1S, just for test purposes
         private const string LIGHT_SERVICE_UUID = "0000FFE0-0000-1000-8000-00805F9B34FB";
@@ -37,64 +40,51 @@ namespace LightApp
             // Set our view from the "main" layout resource
             SetContentView(Resource.Layout.Main);
 
-            BluetoothGattService lightService = null;
-            BluetoothGattCharacteristic lightCharacteristic = null;
             connectedToArduino = false;
             lightSwitch = FindViewById<ImageView>(Resource.Id.lightSwitchBtn);
             nameTV = FindViewById<TextView>(Resource.Id.textView1);
             textView2 = FindViewById<TextView>(Resource.Id.textView2);
+            toolbar = FindViewById<Toolbar>(Resource.Id.toolbar);
+            reloadBtn = FindViewById<ImageView>(Resource.Id.reloadBtn);
 
+            SetActionBar(toolbar);
+            ActionBar.Title = "LightApp";
+            
             // to run the code only once (at startup) or only when there is no connection to the arduino
             if (!connectedToArduino)
             {
-                if (Init())
-                {
-                    if (ConnectToAddress(ARDUINO_MAC_ADDRESS))
-                    {
-                        nameTV.Text = bleGatt.Device.Name;
+                Main();
+            }
 
-                        if (GetService(LIGHT_SERVICE_UUID, ref lightService))
-                        {
-                            if (GetCharacteristic(LIGHT_CHARACTERISTIC_UUID, lightService, ref lightCharacteristic))
-                            {
-                                // ready to work
-                                textView2.Text = "Connected";
-                                connectedToArduino = true;
-                            }
-                            else
-                            {
-                                textView2.Text = "Get characteristic failed";
-                            }
-                        }
-                        else
-                        {
-                            textView2.Text = "Get service failed";
-                        }
-                    }
-                    else
-                    {
-                        textView2.Text = "Connecting to device failed";
-                    }
-                }
-                else
-                {
-                    textView2.Text = "Init failed";
-                }
+            reloadBtn.Click += delegate
+            {
+                Main();
+            };
+        }
 
-                if (connectedToArduino)
+        private void Main()
+        {
+            if (Init())
+            {
+                connectedToArduino = ConnectToArduino();
+            }
+            else
+            {
+                textView2.Text = "Init failed";
+            }
+
+            if (connectedToArduino)
+            {
+                lightSwitch.Click += delegate
                 {
-                    lightSwitch.Click += delegate
-                    {
-                        lightCharacteristic.SetValue("1");
-                        bleGatt.WriteCharacteristic(lightCharacteristic);
-                    };
-                }
+                    lightCharacteristic.SetValue("1");
+                    bleGatt.WriteCharacteristic(lightCharacteristic);
+                };
             }
         }
 
         private bool Init()
         {
-            bool result = false;
             adapter = BluetoothAdapter.DefaultAdapter;
             observer = new GattClientObserver();
 
@@ -105,19 +95,57 @@ namespace LightApp
                     if (!adapter.IsEnabled)
                     {
                         adapter.Enable();
-                        WaitMs(3000);
+
+                        while (adapter.State != State.On)
+                        {
+                            //wait
+                            WaitMs(10);
+                        }
                     }
 
-                    result = true;
+                    return true;
                 }
             }
 
-            return result;
+            return false;
+        }
+
+        private bool ConnectToArduino()
+        {
+            if (ConnectToAddress(ARDUINO_MAC_ADDRESS))
+            {
+                if (GetService(LIGHT_SERVICE_UUID, ref lightService))
+                {
+                    if (GetCharacteristic(LIGHT_CHARACTERISTIC_UUID, lightService, ref lightCharacteristic))
+                    {
+                        // ready to work
+                        nameTV.Text = bleDevice.Name;
+                        textView2.Text = "Connected";
+                        return true;
+                    }
+                    else
+                    {
+                        textView2.Text = "Get characteristic failed";
+                    }
+                }
+                else
+                {
+                    textView2.Text = "Get service failed";
+                }
+            }
+            else
+            {
+                textView2.Text = "Connecting to device failed";
+            }
+
+            return false;
         }
 
         private bool ConnectToAddress(byte[] address)
         {
             Stopwatch stopwatch = new Stopwatch();
+            BluetoothManager manager;
+        
             // find the device
             bleDevice = adapter.GetRemoteDevice(address);
             // connect to the device
@@ -130,14 +158,14 @@ namespace LightApp
             // wait until the arduino is connected
             while (manager.GetConnectionState(bleDevice, ProfileType.Gatt) != ProfileState.Connected)
             {
-                //after 10s return false
-                if (stopwatch.ElapsedMilliseconds >= 10000)
+                //after 5s return false
+                if (stopwatch.ElapsedMilliseconds >= 5000)
                 {
                     stopwatch.Stop();
                     return false;
                 }
 
-                WaitMs(500);
+                WaitMs(100);
             }
 
             stopwatch.Stop();
@@ -165,7 +193,7 @@ namespace LightApp
                     return false;
                 }
 
-                WaitMs(200);
+                WaitMs(100);
                 bleServicesList = bleGatt.Services;
             }
 
@@ -205,7 +233,7 @@ namespace LightApp
                     return false;
                 }
 
-                WaitMs(200);
+                WaitMs(100);
                 bleCharacteristicsList = service.Characteristics;
             }
 
