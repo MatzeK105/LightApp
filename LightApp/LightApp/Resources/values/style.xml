@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+  <style name="MyTheme" parent="android:Theme.Material">
+    <!-- Override the app bar color -->
+    <item name="android:colorPrimary">@color/barColor</item>
+    <!-- Override the color of UI controls -->
+    <item name="android:colorAccent">@color/accentColor</item>
+    <item name="android:windowBackground">@color/backgroundColor</item>
+  </style>
+
+  <style name="MyTheme.Splash" parent ="Theme.AppCompat.Light.NoActionBar">
+    <item name="android:windowBackground">@drawable/LoadSplashScreen</item>
+    <item name="android:windowNoTitle">true</item>
+  </style>
+</resources>

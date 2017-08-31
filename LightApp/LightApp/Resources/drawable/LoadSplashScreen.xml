@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <item>
+    <shape android:shape="rectangle">
+      <solid android:color="@color/loadScreenColor"/>
+    </shape>
+  </item>
+  <item
+    android:bottom="290dp"
+    android:top="110dp"
+    android:right="40dp"
+    android:left="40dp">
+    <bitmap
+        android:src="@drawable/LogoSchrift"/>
+  </item>
+</layer-list>
